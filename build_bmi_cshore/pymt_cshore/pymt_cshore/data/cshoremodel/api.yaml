@@ -1,0 +1,4 @@
+name: pymt_cshore
+language: fortran
+package: pymt_cshore
+class: cshoremodel

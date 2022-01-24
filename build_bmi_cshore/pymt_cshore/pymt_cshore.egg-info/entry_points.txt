@@ -1,0 +1,3 @@
+[pymt.plugins]
+cshoremodel = pymt_cshore.bmi:cshoremodel
+
