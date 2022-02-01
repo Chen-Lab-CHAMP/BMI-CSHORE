@@ -63,7 +63,7 @@ module bmi_cshore_module
      procedure :: get_grid_type => heat_grid_type
      procedure :: get_grid_rank => heat_grid_rank
      procedure :: get_grid_shape => cshore_grid_shape
-     procedure :: get_grid_size => heat_grid_size
+     procedure :: get_grid_size => cshore_grid_size
      procedure :: get_grid_spacing => heat_grid_spacing
      procedure :: get_grid_origin => heat_grid_origin
      procedure :: get_grid_x => heat_grid_x
@@ -226,7 +226,7 @@ contains
     this%exp_var_info_table_io(var_io_idx_bathymetry)%unit = &
       "m"
     this%exp_var_info_table_io(var_io_idx_bathymetry)%type = &
-      "double_precision"
+      "double precision"
     this%exp_var_info_table_io(var_io_idx_bathymetry)%grid_id = &
       var_io_idx_bathymetry
     grid_shape = shape(this%cshore_vars%ZB)
@@ -300,7 +300,7 @@ contains
     this%exp_var_info_table_o(var_o_idx_maxmwl)%unit = &
       "m"
     this%exp_var_info_table_o(var_o_idx_maxmwl)%type = &
-      "double_precision"
+      "double precision"
     this%exp_var_info_table_o(var_o_idx_maxmwl)%grid_id = &
       total_exp_var_io_plus_1 - 1 + total_exp_var_i_plus_1 - 1 + &
       var_o_idx_maxmwl
@@ -322,7 +322,7 @@ contains
     this%exp_var_info_table_o(var_o_idx_setup)%unit = &
       "m"
     this%exp_var_info_table_o(var_o_idx_setup)%type = &
-      "double_precision"
+      "double precision"
     this%exp_var_info_table_o(var_o_idx_setup)%grid_id = &
       total_exp_var_io_plus_1 - 1 + total_exp_var_i_plus_1 - 1 + &
       var_o_idx_setup
@@ -641,24 +641,59 @@ contains
   end function cshore_grid_shape
 
   ! The total number of elements in a grid.
-  function heat_grid_size(this, grid, size) result (bmi_status)
+  function cshore_grid_size(this, grid, size) result (bmi_status)
     class (bmi_cshore_type), intent(in) :: this
     integer, intent(in) :: grid
     integer, intent(out) :: size
-    integer :: bmi_status
+    integer :: bmi_status, i, index_shape
 
-    select case(grid)
-    case(0)
-       size = this%cshore_vars%n_y * this%cshore_vars%n_x
-       bmi_status = BMI_SUCCESS
-    case(1)
-       size = 1
-       bmi_status = BMI_SUCCESS
-    case default
-       size = -1
-       bmi_status = BMI_FAILURE
-    end select
-  end function heat_grid_size
+    ! select case(grid)
+    ! case(0)
+    !    size = this%cshore_vars%n_y * this%cshore_vars%n_x
+    !    bmi_status = BMI_SUCCESS
+    ! case(1)
+    !    size = 1
+    !    bmi_status = BMI_SUCCESS
+    ! case default
+    !    size = -1
+    !    bmi_status = BMI_FAILURE
+    ! end select
+
+    do i = 1, total_exp_var_io_plus_1 - 1, 1
+      if (grid == this%exp_var_info_table_io(i)%grid_id) then
+        size = 1
+        do index_shape = 1, this%exp_var_info_table_io(i)%grid_rank, 1
+          size = size * this%exp_var_info_table_io(i)%grid_shape(index_shape)
+        end do
+        bmi_status = BMI_SUCCESS
+        return
+      end if
+    end do
+
+    do i = 1, total_exp_var_i_plus_1 - 1, 1
+      if (grid == this%exp_var_info_table_i(i)%grid_id) then
+        size = 1
+        do index_shape = 1, this%exp_var_info_table_i(i)%grid_rank, 1
+          size = size * this%exp_var_info_table_i(i)%grid_shape(index_shape)
+        end do
+        bmi_status = BMI_SUCCESS
+        return
+      end if
+    end do
+
+    do i = 1, total_exp_var_o_plus_1 - 1, 1
+      if (grid == this%exp_var_info_table_o(i)%grid_id) then
+        size = 1
+        do index_shape = 1, this%exp_var_info_table_o(i)%grid_rank, 1
+          size = size * this%exp_var_info_table_o(i)%grid_shape(index_shape)
+        end do
+        bmi_status = BMI_SUCCESS
+        return
+      end if
+    end do
+
+    bmi_status = BMI_FAILURE
+  end function cshore_grid_size
 
   ! The distance between nodes of a grid.
   function heat_grid_spacing(this, grid, spacing) result (bmi_status)
