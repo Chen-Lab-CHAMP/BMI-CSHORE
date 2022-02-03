@@ -69,8 +69,8 @@ if __name__ == "__main__":
 
         for name, info in var_info.items():
             info["buffer"] = create_var_buffer(var_info, name)
-            # if info["io_type"] == "in_out" or info["io_type"] == "out":
-            #     cshore.get_value(name, info["buffer"])
+            if info["io_type"] == "out":
+                cshore.get_value(name, info["buffer"])
             # if 10 <= len(info['buffer']):
             #     print(f"{name}={info['buffer'][:5]}")
             #     print(f"{name}={info['buffer'][-5:]}")
