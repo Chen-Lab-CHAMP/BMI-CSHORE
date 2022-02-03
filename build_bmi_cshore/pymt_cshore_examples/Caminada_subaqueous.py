@@ -69,13 +69,13 @@ if __name__ == "__main__":
 
         for name, info in var_info.items():
             info["buffer"] = create_var_buffer(var_info, name)
-            if info["io_type"] == "in_out" or info["io_type"] == "out":
-                cshore.get_value(name, info["buffer"])
-            if 10 <= len(info['buffer']):
-                print(f"{name}={info['buffer'][:5]}")
-                print(f"{name}={info['buffer'][-5:]}")
-            else:
-                print(f"{name}={info['buffer']}")
+            # if info["io_type"] == "in_out" or info["io_type"] == "out":
+            #     cshore.get_value(name, info["buffer"])
+            # if 10 <= len(info['buffer']):
+            #     print(f"{name}={info['buffer'][:5]}")
+            #     print(f"{name}={info['buffer'][-5:]}")
+            # else:
+            #     print(f"{name}={info['buffer']}")
 
         # with open('zb_init.csv', 'w', newline='') as file:
         #     column_names = []
@@ -89,8 +89,7 @@ if __name__ == "__main__":
         #         for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
         #             mywriter.writerow(
         #                 {f"zb_{t + 1}":
-        #                     var_info["bathymetry"]["buffer"]\
-        #                         [offset + g]})
+        #                     var_info["bathymetry"]["buffer"][offset + g]})
         #         offset += var_info["grid_per_transect"]["buffer"][t]
 
         # time loop
@@ -110,25 +109,26 @@ if __name__ == "__main__":
             #     offset += var_info["grid_per_transect"]["buffer"][t]
             # cshore.set_value("bathymetry", var_info["bathymetry"]["buffer"])
 
+        # preserve the variable of interest, bathymetry
         cshore.get_value("bathymetry", var_info["bathymetry"]["buffer"])
 
         cshore.finalize()
 
-        # with open('zb_end.csv', 'w', newline='') as file:
-        #     column_names = []
-        #     for t in range(0, var_info["total_transects"]["buffer"][0], 1):
-        #         column_names.append(f"zb_{t + 1}")
-        #     mywriter = csv.DictWriter(file, fieldnames = column_names)
-        #     mywriter.writeheader()
-        #
-        #     offset = 0
-        #     for t in range(0, var_info["total_transects"]["buffer"][0], 1):
-        #         for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
-        #             mywriter.writerow(
-        #                 {f"zb_{t + 1}":
-        #                     var_info["bathymetry"]["buffer"]\
-        #                         [offset + g]})
-        #         offset += var_info["grid_per_transect"]["buffer"][t]
+        # store the preserved variable
+        with open('zb_end.csv', 'w', newline='') as file:
+            column_names = []
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                column_names.append(f"zb_{t + 1}")
+            mywriter = csv.DictWriter(file, fieldnames = column_names)
+            mywriter.writeheader()
+
+            offset = 0
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
+                    mywriter.writerow(
+                        {f"zb_{t + 1}":
+                            var_info["bathymetry"]["buffer"][offset + g]})
+                offset += var_info["grid_per_transect"]["buffer"][t]
 
 
         sys.exit(0)
