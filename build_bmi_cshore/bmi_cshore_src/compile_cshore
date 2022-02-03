@@ -1,0 +1,8 @@
+#gfortran -std=f2003 -Wextra -Wno-compare-reals -finit-local-zero -finit-derived -o main cshore.f print_vars.f90 bmi.f90  bmi_cshore.f90 bmi_main.f90
+#gfortran -std=f2003 -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o main string_processing.f03 cshore_helper.f03 cshore.f bmi.f90 bmi_cshore.f03 bmi_main.f03
+#gfortran -std=f2003 -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o cshore_bmi string_processing.f03 cshore_helper.f03 cshore.f bmi.f90 bmi_cshore.f03 cshore_bmi_main.f03
+#gfortran -std=f2008 -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o cshore_bmi_ipc_fifo model_coupling_ipc.f08 string_processing.f03 cshore_helper.f03 cshore.f bmi.f90 bmi_cshore.f03 bmi_main_ipc_fifo_sendmaxmwl.f08
+#gfortran -std=f2003 -g -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o cshore_bmi string_processing.f03 cshore_helper.f03 cshore_new.f bmi.f90 bmi_cshore_new.f03 cshore_bmi_main_new.f03
+# latest
+gfortran -std=f2008 -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o cshore_bmi_ipc_fifo model_coupling_ipc.f08 string_processing.f03 cshore_helper.f03 cshore_new.f bmi.f90 bmi_cshore_new.f03 bmi_main_ipc_fifo_new.f08
+#gfortran -std=f2008 -Wextra -Wno-compare-reals -fmax-errors=10 -finit-local-zero -o cshore_bmi_noipc_fifo model_coupling_ipc.f08 string_processing.f03 cshore_helper.f03 cshore_new.f bmi.f90 bmi_cshore_new.f03 bmi_main_noipc_fifo_new.f08
