@@ -1,10 +1,20 @@
 from pymt_cshore import cshoremodel
+import aeolis.model
 import numpy as np
 import traceback
 import sys
 import csv
 
-def CollectIndividualVarInfo(model_bmi, var_name):
+def CollectIndividualVarInfo_Aeolis(model_bmi, var_name):
+
+    return {
+        var_name: {
+            "var_type": model_bmi.get_var_type(var_name),
+            "var_rank": model_bmi.get_var_rank(var_name),
+            "var_shape": model_bmi.get_var_shape(var_name)}}
+
+
+def CollectIndividualVarInfo_BmiCshore(model_bmi, var_name):
 
     data_type = model_bmi.get_var_type(var_name)
     grid_id = model_bmi.get_var_grid(var_name)
@@ -21,6 +31,7 @@ def CollectIndividualVarInfo(model_bmi, var_name):
             "grid_shape": grid_shape,
             "grid_size": grid_size}}
 
+
 def CollectVarInfoViaBmi(model_bmi):
 
     var_info = {}
@@ -32,19 +43,19 @@ def CollectVarInfoViaBmi(model_bmi):
     var_outs = var_outs.difference(var_in_outs)
 
     for var_name in var_ins:
-        info = CollectIndividualVarInfo(model_bmi, var_name)
+        info = CollectIndividualVarInfo_BmiCshore(model_bmi, var_name)
         for k in info:
             info[k]["io_type"] = "in"
         var_info.update(info)
 
     for var_name in var_outs:
-        info = CollectIndividualVarInfo(model_bmi, var_name)
+        info = CollectIndividualVarInfo_BmiCshore(model_bmi, var_name)
         for k in info:
             info[k]["io_type"] = "out"
         var_info.update(info)
 
     for var_name in var_in_outs:
-        info = CollectIndividualVarInfo(model_bmi, var_name)
+        info = CollectIndividualVarInfo_BmiCshore(model_bmi, var_name)
         for k in info:
             info[k]["io_type"] = "in_out"
         var_info.update(info)
@@ -61,54 +72,82 @@ def create_var_buffer(var_info, var_name_string):
 ########################################################################
 if __name__ == "__main__":
     try:
-        cshore = cshoremodel()
+        # initialize CSHORE
+        cshore_model = cshoremodel()
+        cshore_model.initialize('./')
 
-        cshore.initialize('./')
+        var_info = CollectVarInfoViaBmi(cshore_model)
+        for name, info in var_info.items():
+            info["buffer"] = create_var_buffer(var_info, name)
+            if info["io_type"] == "out":
+                cshore_model.get_value(name, info["buffer"])
 
-        var_info = CollectVarInfoViaBmi(cshore)
+        # initialize AeoLiS
+        aeolis_model=aeolis.model.AeoLiS(configfile="./aeolis.txt")
+        aeolis_model.initialize()
 
-        ntime_buffer = create_var_buffer(var_info, 'ntime')
-        cshore.get_value('ntime', ntime_buffer)
-        print('ntime=',ntime_buffer)
+        bathymetry_aeolis = aeolis_model.get_var("zb")
 
-        total_transects_buffer = create_var_buffer(var_info, 'total_transects')
-        cshore.get_value('total_transects', total_transects_buffer)
-        print('total_transects=',total_transects_buffer)
-
-        grid_per_transect_buffer = create_var_buffer(var_info, 'grid_per_transect')
-        cshore.get_value('grid_per_transect', grid_per_transect_buffer)
-        print('grid_per_transect=',grid_per_transect_buffer)
-
-        bathymetry_buffer = create_var_buffer(var_info, 'bathymetry')
-        cshore.get_value('bathymetry', bathymetry_buffer)
-        print('bathymetry=',bathymetry_buffer[:5])
-        print('bathymetry=',bathymetry_buffer[2690:2702])
-
-        mainloop_itime_buffer= create_var_buffer(var_info, 'mainloop_itime')
-        print('mainloop_itime=', mainloop_itime_buffer)
-
-        with open('zb_init.csv', 'w', newline='') as file:
-            mywriter = csv.DictWriter(file, fieldnames = ['zb'])
+        # preserve initial bathymetry from CSHORE
+        cshore_model.get_value("bathymetry", var_info["bathymetry"]["buffer"])
+        with open('zb_begin.csv', 'w', newline='') as file:
+            column_names = []
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                column_names.append(f"zb_{t + 1}")
+            mywriter = csv.DictWriter(file, fieldnames = column_names)
             mywriter.writeheader()
-            for i in range(0, 2702, 1):
-                mywriter.writerow({'zb': bathymetry_buffer[i]})
+
+            offset = 0
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
+                    mywriter.writerow(
+                        {f"zb_{t + 1}":
+                            var_info["bathymetry"]["buffer"][offset + g]})
+                offset += var_info["grid_per_transect"]["buffer"][t]
 
         # time loop
-        for itime in range(1, ntime_buffer[0]+1):
-            mainloop_itime_buffer[0]=itime
-            cshore.set_value('mainloop_itime', mainloop_itime_buffer)
-            print(mainloop_itime_buffer)
-            cshore.update()
-        #
-        cshore.get_value('bathymetry', bathymetry_buffer)
+        for itime in range(1, var_info["ntime"]["buffer"][0] + 1, 1):
+            print(f"Step {itime}")
+
+            var_info["mainloop_itime"]["buffer"][0] = itime
+            cshore_model.set_value('mainloop_itime', var_info["mainloop_itime"]["buffer"])
+            cshore_model.update()
+
+            # get_value from cshore
+            cshore_model.get_value("bathymetry", var_info["bathymetry"]["buffer"])
+            # set_value to aeolis
+            offset = 0
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
+                    bathymetry_aeolis[t][g] = var_info["bathymetry"]["buffer"][offset + g]
+                offset += var_info["grid_per_transect"]["buffer"][t]
+
+            # aeolis update
+            aeolis_model.update()
+
+            # get_value from aeolis
+            # set_value to cshore
+            offset = 0
+            for t in range(0, var_info["total_transects"]["buffer"][0], 1):
+                for g in range(0, var_info["grid_per_transect"]["buffer"][t], 1):
+                    var_info["bathymetry"]["buffer"][offset + g] = bathymetry_aeolis[t][g]
+                offset += var_info["grid_per_transect"]["buffer"][t]
+
+        # preserve final bathymetry from AeoLiS
         with open('zb_end.csv', 'w', newline='') as file:
-            mywriter = csv.DictWriter(file, fieldnames = ['zb'])
+            column_names = []
+            for t in range(0, len(bathymetry_aeolis), 1):
+                column_names.append(f"zb_{t + 1}")
+            mywriter = csv.DictWriter(file, fieldnames = column_names)
             mywriter.writeheader()
-            for i in range(0, 2702, 1):
-                mywriter.writerow({'zb': bathymetry_buffer[i]})
 
-        cshore.finalize()
+            for t in range(0, len(bathymetry_aeolis), 1):
+                for g in range(0, len(bathymetry_aeolis[t]), 1):
+                    mywriter.writerow({f"zb_{t + 1}": bathymetry_aeolis[t][g]})
 
+        aeolis_model.finalize()
+
+        cshore_model.finalize()
 
         sys.exit(0)
 
